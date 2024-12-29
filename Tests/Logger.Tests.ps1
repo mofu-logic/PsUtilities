@@ -8,11 +8,6 @@ Set-Location (Split-Path -Path (Split-Path -Path $PSCommandPath -Parent) -Parent
 # テストするスクリプト名
 $testScriptName = (Split-Path -Path $PSCommandPath -Leaf).replace(".Tests.ps1", ".ps1")
 
-# Powershellの $MyInvocation変数の退避
-# このスクリプトの $MyInvocation は It セクションでは取得できない
-# https://learn.microsoft.com/ja-jp/powershell/module/microsoft.powershell.core/about/about_automatic_variables?view=powershell-5.1#myinvocation
-$testScriptMyInvocation = $MyInvocation
-
 #------------------------------------------------------------------------------
 # テストのセットアップ
 #------------------------------------------------------------------------------
@@ -22,40 +17,56 @@ BeforeDiscovery {}
 # テスト本体
 #------------------------------------------------------------------------------
 Describe $testScriptName"のユニットテスト" {
-  BeforeAll {}
+  BeforeAll {
+    # デバッグ出力を「出力して継続」に変更
+    $DebugPreference = "Continue"
+
+    # テスト対象のスクリプトを読み込む
+    . (".\Modules\" + (Split-Path -Path $PSCommandPath -Leaf ).replace(".Tests.ps1", ".ps1"))
+    $Logger = [Logger]::new()
+    $Logger.logFolder = "TestDrive:\"
+    $Logger.logFilename = "test.log"
+  }
   BeforeEach {}
   AfterEach {}
   AfterAll {}
 
-  Context "正常系" {
-    It "Regular-TestCase" {
-      $Logger = New-Object Logger($testScriptMyInvocation)
-      #$Logger = [Logger]::new($testScriptMyInvocation)
+  Context '正常系' {
+    It 'ログレベルに沿ったログ出力がなされること' {
       $message = "test-message"
 
       $Logger.debug($message)
-      Get-Content (Join-Path $Logger.logDir $Logger.logFilename) -Tail 1 | Should -Match ".*DEBUG.*$message.*" 
-
+      Get-Content (Join-Path $Logger.logFolder $Logger.logFilename) -Tail 1 | Should -Match ".*DEBUG.*$message.*" 
       $Logger.info($message)
-      Get-Content (Join-Path $Logger.logDir $Logger.logFilename) -Tail 1 | Should -Match ".*INFO.*$message.*" 
+      Get-Content (Join-Path $Logger.logFolder $Logger.logFilename) -Tail 1 | Should -Match ".*INFO.*$message.*" 
 
       $Logger.warn($message)
-      Get-Content (Join-Path $Logger.logDir $Logger.logFilename) -Tail 1 | Should -Match ".*WARN.*$message.*" 
+      Get-Content (Join-Path $Logger.logFolder $Logger.logFilename) -Tail 1 | Should -Match ".*WARN.*$message.*" 
 
       $Logger.error($message)
-      Get-Content (Join-Path $Logger.logDir $Logger.logFilename) -Tail 1 | Should -Match ".*ERROR.*$message.*" 
+      Get-Content (Join-Path $Logger.logFolder $Logger.logFilename) -Tail 1 | Should -Match ".*ERROR.*$message.*" 
     }
+
+    It '出力元名が正しいこと' {
+      $message = "test-message"
+      $Logger.debug($message)
+      Get-Content (Join-Path $Logger.logFolder $Logger.logFilename) -Tail 1 | Should -Match ".*$testScriptName.*" 
+
+      $Logger.sourceName = "test-source"
+      $Logger.debug($message)
+      Get-Content (Join-Path $Logger.logFolder $Logger.logFilename) -Tail 1 | Should -Match ".*test-source.*" 
+    }
+
   }
 
   Context "異常系" {
-    It "Exception-TestCase" {
-
-      $Logger = New-Object Logger($testScriptMyInvocation)
+    It "例外発生" {
       # Specific Non-Existing Directory
-      $Logger.logDir = (Join-Path $Logger.logDir "DummyDummyDir")
+      $Logger.logFolder = (Join-Path $Logger.logFolder "DummyDummyDir")
         
-      { $Logger.debug($message) } | Should -Throw -ExceptionType System.IO.DirectoryNotFoundException
+      {
+        $Logger.debug($message)
+      } | Should -Throw -ExceptionType System.IO.DirectoryNotFoundException
     }
   }
-
 }

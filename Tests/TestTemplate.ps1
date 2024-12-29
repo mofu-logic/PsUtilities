@@ -1,9 +1,14 @@
 #------------------------------------------------------------------------------
 # xxxxx.ps1のテスト
 #------------------------------------------------------------------------------
-# ドットソースでテスト対象スクリプトの読み込みを行う
-Set-Location (Split-Path -Path (Split-Path -Path $PSCommandPath -Parent) -Parent)
-. (".\Modules\" + (Split-Path -Path $PSCommandPath -Leaf ).replace(".Tests.ps1", ".ps1"))
+BeforeAll {
+  # ドットソースでテスト対象スクリプトの読み込みを行う
+  Set-Location (Split-Path -Path (Split-Path -Path $PSCommandPath -Parent) -Parent)
+  . (".\Modules\" + (Split-Path -Path $PSCommandPath -Leaf ).replace(".Tests.ps1", ".ps1"))
+
+  # デバッグの設定
+  $DebugPreference = "continue"
+}
 
 # テストするスクリプト名
 $testScriptName = (Split-Path -Path $PSCommandPath -Leaf)

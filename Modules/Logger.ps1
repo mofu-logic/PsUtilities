@@ -56,7 +56,7 @@ class Logger {
   # プロパティ(オプション)
   # デフォルト出力元名
   [string] $sourceName
-  #
+  # ログ作成日時
   [string] $logCreatedDatetime
 
   # コンストラクタ
